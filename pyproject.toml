@@ -17,6 +17,8 @@ mlflow = "^2.15.1"
 evidently = "^0.4.36"
 seaborn = "^0.13.2"
 catboost = "^1.2.5"
+shap = "^0.46.0"
+tqdm = "^4.66.5"
 
 [tool.poetry.group.dev.dependencies]
 ruff = "^0.5.7"
