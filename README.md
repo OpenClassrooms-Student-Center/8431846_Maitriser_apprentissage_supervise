@@ -5,11 +5,10 @@
 
 Ce repo centralise toutes les ressources (code de screencasts, énoncés et corrigés d'exercices) du projet filé lié au cours "Maitrisez l'apprentissage supervisé". La sturcture des différents dossiers est comme suit
 
-Copysrc/
-├── exerices/                # Notebooks énoncé et corrigé pour chaque chapitre du cours où un exerice est prévu
-├── screencasts/         # Code présenté pendant chaque screencast
-├── screenshots/           # Code permettant de générer certains screenshots du cours
-└── utils/               # Fonctions utilitaires
+.
+├── exerices                # Notebooks énoncé et corrigé pour chaque chapitre du cours où un exerice est prévu
+├── screencasts             # Code présenté pendant chaque screencast
+└── screenshots             # Code permettant de générer certains screenshots du cours
 
 
 
