@@ -122,6 +122,8 @@ from mlflow import MlflowClient
 
 client = MlflowClient(tracking_uri="http://127.0.0.1:8080")
 
+# %% 
+mlflow.search_runs(search_all_experiments=True)
 
 # %%
 # ------------------------ Premiere modèlisation ----------------
@@ -305,8 +307,3 @@ with mlflow.start_run(run_name="catboost_" + region) as run:
         feature_importances, features_1
     )
 
-
-
-best_run = client.search_runs(
-    experiment_id, order_by=["metrics.val_loss ASC"], max_results=1
-)[0]
