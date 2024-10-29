@@ -5,11 +5,9 @@
 
 Ce repo centralise toutes les ressources (code de screencasts, énoncés et corrigés d'exercices) du projet filé lié au cours "Maitrisez l'apprentissage supervisé". La sturcture des différents dossiers est comme suit
 
-.
-├── exerices                # Notebooks énoncé et corrigé pour chaque chapitre du cours où un exerice est prévu
-├── screencasts             # Code présenté pendant chaque screencast
-└── screenshots             # Code permettant de générer certains screenshots du cours
-
+* **exercices :**  Notebooks énoncé et corrigé pour chaque chapitre du cours
+* **screencasts :**  Code présenté pendant chaque screencast
+* **screenshots :**  Code permettant de générer certains screenshots du cours
 
 
 ### Comment utiliser la donnée
@@ -23,7 +21,6 @@ Vous pouvez télécharger tous les jeux de données dont vous aurez besoin via c
 * **categorical_features_used.json** : sous-ensemble du ficher précédent, avec uniquement les features qualitatives 
 
 Les différentes données sont soit au format parquet (format plus pratique que le csv et utilisable avec Pandas ou Polars) soit au format JSON quand il s'agit de listes de features.
-
 
 Dans le cas où vous souhaiteriez reconstituer la donnée transactions_immobilieres.parquet, vous pouvez partir des données brutes dans ce zip et utiliser le script preprocessing.py.
 
