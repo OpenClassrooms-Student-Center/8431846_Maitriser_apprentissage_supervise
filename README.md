@@ -10,7 +10,7 @@ Ce repository centralise toutes les ressources (code de screencasts, énoncés e
 * **screenshots :**  Code permettant de générer certains screenshots du cours
 
 
-## Comment ce repository
+## Comment utiliser ce repository
 
 ### Téléchargement des données
 
