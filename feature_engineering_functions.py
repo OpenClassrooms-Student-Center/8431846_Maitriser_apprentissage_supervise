@@ -1,11 +1,18 @@
 import polars as pl
-from settings import NB_TRANSACTIONS_PER_MONTH
+from settings import (
+    NB_TRANSACTIONS_PER_MONTH,
+    DEPARTEMENT,
+    TRANSACTION_YEAR,
+    TRANSACTION_MONTH,
+    AVERAGE_PRICE_PER_SQUARE_METER,
+    CITY_UNIQUE_ID,
+)
 
 
 def compute_city_features(
     transactions_per_city: pl.DataFrame,
     feature_name: str = "ville_demandee",
-    grouping_columns: list = ["departement", "annee_transaction", "mois_transaction"],
+    grouping_columns: list = [DEPARTEMENT, TRANSACTION_YEAR, TRANSACTION_MONTH],
     quantile_threshold=0.8,
     verbose: bool = False,
 ):
@@ -79,55 +86,27 @@ def calculate_interest_rate_features(
 
 def compute_price_per_m2_features(
     average_per_month_per_city: pl.DataFrame,
-    sort_columns: list = [
-        "departement",
-        "ville",
-        "id_ville",
-    ],
+    sort_columns: list = CITY_UNIQUE_ID,
     aggregation_period="6mo",
 ):
-    # Besoin de créer cette colonne pour calculer la moyenne glissante (Polars n'accepte qu'une colonne)
-    """
-    POLARS ARTICLE
-    average_per_month_per_city = average_per_month_per_city.with_columns(
-        annee_mois_transaction=pl.date(
-            pl.col("annee_transaction"), pl.col("mois_transaction"), 1
-        )
-    )
-
-    average_per_month_per_city = average_per_month_per_city.sort(
-        sort_columns
-    ).with_columns(
-        pl.col("prix_m2_moyen").shift().alias("prix_m2_moyen_mois_precedent"),
-        pl.col("prix_m2_nombre").shift().alias("nb_transactions_mois_precedent"),
-        pl.mean("prix_m2_moyen")
-        .rolling(index_column="annee_mois_transaction", period=aggregation_period)
-        .alias("prix_m2_moyen_glissant_" + aggregation_period),
-        pl.count("prix_m2_nombre")
-        .rolling(index_column="annee_mois_transaction", period=aggregation_period)
-        .alias("nb_transaction_moyen_glissant_" + aggregation_period),
-    )
-    POLARS ARTICLE
-    """
-
     average_per_month_per_city = (
         average_per_month_per_city.sort(sort_columns)
         .with_columns(
-            pl.col("prix_m2_moyen")
+            pl.col(AVERAGE_PRICE_PER_SQUARE_METER)
             .shift()
-            .over(["departement", "ville", "id_ville"])
+            .over(CITY_UNIQUE_ID)
             .alias("prix_m2_moyen_mois_precedent"),
             pl.col(NB_TRANSACTIONS_PER_MONTH)
             .shift()
-            .over(["departement", "ville", "id_ville"])
+            .over(CITY_UNIQUE_ID)
             .alias("nb_transactions_mois_precedent"),
-            pl.col("prix_m2_moyen")
+            pl.col(AVERAGE_PRICE_PER_SQUARE_METER)
             .rolling_mean(window_size=6)
-            .over(["departement", "ville", "id_ville"])
+            .over(CITY_UNIQUE_ID)
             .alias("prix_m2_moyen_glissant_" + aggregation_period),
             pl.col(NB_TRANSACTIONS_PER_MONTH)
             .rolling_mean(window_size=6)
-            .over(["departement", "ville", "id_ville"])
+            .over(CITY_UNIQUE_ID)
             .alias("nb_transaction_moyen_glissant_" + aggregation_period),
         )
         .filter(

@@ -4,8 +4,17 @@ from datetime import datetime
 from settings import (
     TRANSACTIONS_FILE_PATH,
     TRANSACTION_DATE,
+    TRANSACTION_MONTH,
+    TRANSACTION_YEAR,
+    DEPARTEMENT,
+    CITY_UNIQUE_ID,
+    SURFACE,
+    AVERAGE_PRICE_PER_SQUARE_METER,
+    CLASSIFICATION_TARGET,
+    REGRESSION_TARGET,
     PRICE_PER_SQUARE_METER,
     NB_TRANSACTIONS_PER_MONTH,
+    REGION,
 )
 import seaborn as sns
 
@@ -62,14 +71,14 @@ def process_transactions(
     )
 
     filtered_transactions = filtered_transactions.with_columns(
-        pl.col(TRANSACTION_DATE).dt.month().alias("mois_transaction")
+        pl.col(TRANSACTION_DATE).dt.month().alias(TRANSACTION_MONTH)
     )
     filtered_transactions = filtered_transactions.with_columns(
-        pl.col(TRANSACTION_DATE).dt.year().alias("annee_transaction")
+        pl.col(TRANSACTION_DATE).dt.year().alias(TRANSACTION_YEAR)
     )
 
     filtered_transactions = create_prix_au_m2_column(
-        filtered_transactions, "prix", "surface_habitable"
+        filtered_transactions, REGRESSION_TARGET, SURFACE
     )
 
     return filtered_transactions
@@ -93,17 +102,12 @@ def get_info_per_month_cities_enough_transactions(
         "departement",
         "ville",
         "id_ville",
-        "annee_transaction",
-        "mois_transaction",
+        TRANSACTION_YEAR,
+        TRANSACTION_MONTH,
     ],
     threshold_nb_transactions=4,
     verbose=False,
 ):
-    """
-    POLARS ARTICLE
-    # The aggregation operation happens inside the agg method, not outside unlike Pandas
-    POLARS ARTICLE
-    """
     average_per_month_per_city = filtered_transactions.group_by(grouping_cols).agg(
         pl.col(PRICE_PER_SQUARE_METER).mean().name.suffix("_moyen"),
         pl.col(PRICE_PER_SQUARE_METER).count().alias(NB_TRANSACTIONS_PER_MONTH),
@@ -113,7 +117,6 @@ def get_info_per_month_cities_enough_transactions(
         pl.col(NB_TRANSACTIONS_PER_MONTH) > threshold_nb_transactions
     )
 
-    # TODO : Seems like something strange is going on here
     if verbose:
         average_per_month_per_city.select(
             pl.col(PRICE_PER_SQUARE_METER + "_moyen"),
@@ -122,16 +125,14 @@ def get_info_per_month_cities_enough_transactions(
 
         # These are the cities that at least have 5 transactions per month
         cities_enough_transactions = (
-            average_per_month_per_city_enough_transactions.group_by(
-                ["departement", "ville", "id_ville"]
-            ).agg(pl.col(NB_TRANSACTIONS_PER_MONTH).min().name.suffix("_nombre_min"))
+            average_per_month_per_city_enough_transactions.group_by(CITY_UNIQUE_ID).agg(
+                pl.col(NB_TRANSACTIONS_PER_MONTH).min().name.suffix("_nombre_min")
+            )
         )
 
         100 * len(cities_enough_transactions) / len(average_per_month_per_city)
     else:
         pass
-
-    # If you had enough of Polars, or if you've reduce the data size to something that runs already fast enough with Pandas
 
     return average_per_month_per_city_enough_transactions, average_per_month_per_city
 
@@ -184,10 +185,11 @@ def load_foyers_fiscaux(
     foyers_fiscaux = pl.read_csv(filepath, infer_schema_length=None)
 
     foyers_fiscaux = foyers_fiscaux.filter(
-        pl.col("departement").is_in(
-            [str(e) for e in permietre_de_villes["departement"].unique()]
+        pl.col(DEPARTEMENT).is_in(
+            [str(e) for e in permietre_de_villes[DEPARTEMENT].unique()]
         )
     ).with_columns([pl.col(e).cast(pl.Int32) for e in ["departement", "id_ville"]])
+
     foyers_fiscaux = foyers_fiscaux.join(
         permietre_de_villes, how="inner", on=permietre_de_villes.columns
     )
@@ -239,14 +241,14 @@ def add_economical_context_features(
 ) -> pl.DataFrame:
     transactions_merged = transactions.join(
         contexte_macro_eco_annuel,
-        left_on="annee_transaction",
+        left_on=TRANSACTION_YEAR,
         right_on="date",
         how="left",
     )
 
     transactions_merged = transactions_merged.join(
         contexte_macro_eco_mensuel,
-        left_on=["annee_transaction", "mois_transaction"],
+        left_on=[TRANSACTION_YEAR, TRANSACTION_MONTH],
         right_on=["annee", "mois"],
         how="left",
     )
@@ -254,12 +256,11 @@ def add_economical_context_features(
     return transactions_merged
 
 
-# TODO : Ecrire dans le cours qu'on supprime certains départements pour réduire la dimensionalité de la données
 def remove_departments_with_few_transactions(
     transactions: pl.DataFrame, threshold_percentile: float = 0.25, verbose: bool = True
 ) -> pl.DataFrame:
     transactions_per_department = (
-        transactions.select("departement").to_series().value_counts()
+        transactions.select(DEPARTEMENT).to_series().value_counts()
     )
 
     if verbose:
@@ -277,13 +278,13 @@ def remove_departments_with_few_transactions(
 
     departments_to_keep = (
         transactions_per_department.filter(pl.col("count") > threshold)
-        .select("departement")
+        .select(DEPARTEMENT)
         .to_series()
         .to_list()
     )
 
     transactions_filtered = transactions.filter(
-        pl.col("departement").is_in(departments_to_keep)
+        pl.col(DEPARTEMENT).is_in(departments_to_keep)
     )
 
     return transactions_filtered, departments_to_keep
@@ -294,18 +295,18 @@ def remove_regions_with_few_transactions(
     nb_regions_to_keep: int = 5,
 ):
     regions_avec_plus_de_transactions = (
-        filtered_transactions.select("region")
+        filtered_transactions.select(REGION)
         .to_series()
         .value_counts()
         .sort(by="count", descending=True)
         .head(nb_regions_to_keep)
-        .select("region")
+        .select(REGION)
         .to_series()
         .to_list()
     )
 
     filtered_transactions = filtered_transactions.filter(
-        pl.col("region").is_in(regions_avec_plus_de_transactions)
+        pl.col(REGION).is_in(regions_avec_plus_de_transactions)
     )
 
     return filtered_transactions
@@ -316,15 +317,15 @@ def remove_regions_with_few_transactions(
 
 def add_classification_target_to_transactions(
     filtered_transactions: pl.DataFrame,
-    target_col_name: str = "en_dessous_du_marche",
+    target_col_name: str = CLASSIFICATION_TARGET,
     percentage_below_mean: float = 0.1,
 ) -> pl.DataFrame:
     filtered_transactions = filtered_transactions.with_columns(
         pl.when(
-            pl.col("prix_m2")
+            pl.col(PRICE_PER_SQUARE_METER)
             < (
-                pl.col("prix_m2_moyen")
-                - (percentage_below_mean * pl.col("prix_m2_moyen"))
+                pl.col(AVERAGE_PRICE_PER_SQUARE_METER)
+                - (percentage_below_mean * pl.col(AVERAGE_PRICE_PER_SQUARE_METER))
             )
         )
         .then(1)
